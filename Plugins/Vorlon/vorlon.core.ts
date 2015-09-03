@@ -1,5 +1,5 @@
 ﻿module VORLON {
-
+     
     export class _Core {
         _clientPlugins = new Array<ClientPlugin>();
         _dashboardPlugins = new Array<DashboardPlugin>();
@@ -12,6 +12,14 @@
         _socketIOWaitCount = 0;
         public debug: boolean = false;
         _RetryTimeout = 1002;
+
+        public get IsBroadcastEnabled(): boolean {
+            return (<any>VORLON).DashboardManager.IsBroadcastEnabled;
+        }
+
+        public get GroupId(): string {
+            return (<any>VORLON).DashboardManager.GroupId;
+        }
 
         public get Messenger(): ClientMessenger {
             return Core._messenger;

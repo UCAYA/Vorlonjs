@@ -138,13 +138,14 @@
             }
         }
 
-        public sendRealtimeMessage(pluginID: string, objectToSend: any, side: RuntimeSide, messageType = "message", incrementVisualIndicator = false, command?:string): void {
+        public sendRealtimeMessage(pluginID: string, objectToSend: any, side: RuntimeSide, messageType = "message", incrementVisualIndicator = false, command?:string, groupId?:string): void {
             var message: VorlonMessage = {
                 metadata: {
                     pluginID: pluginID,
                     side: side,
                     sessionId: this._sessionId,
                     clientId: this._clientId,
+                    groupId: groupId,
                     listenClientId: Core._listenClientId
                 },
                 data: objectToSend

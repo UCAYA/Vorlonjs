@@ -1,4 +1,8 @@
-﻿module VORLON {
+﻿/// <reference path="vorlon.core.ts" />
+/// <reference path="vorlon.enums.ts" />
+/// <reference path="vorlon.tools.ts" />
+
+module VORLON {
     export class DashboardPlugin extends BasePlugin {
         public htmlFragmentUrl;
         public cssStyleSheetUrl;
@@ -20,10 +24,25 @@
                 Core.Messenger.sendRealtimeMessage(this.getID(), data, RuntimeSide.Dashboard, "message");
         }
 
+        public sendToGroup(data: any) {
+            if (Core.Messenger) {
+                var groupId: string = Core.GroupId;
+                Core.Messenger.sendRealtimeMessage(this.getID(), data, RuntimeSide.Dashboard, "message", null, null, groupId);
+            }
+        }
+
         public sendCommandToClient(command: string, data: any = null, incrementVisualIndicator: boolean = false) {
             if (Core.Messenger) {
                 this.trace(this.getID() + ' send command to client ' + command);
                 Core.Messenger.sendRealtimeMessage(this.getID(), data, RuntimeSide.Dashboard, "message", incrementVisualIndicator, command);
+            }
+        }
+
+        public sendCommandToGroup(command: string, data: any = null, incrementVisualIndicator: boolean = false) {
+            if (Core.Messenger) {
+                var groupId: string = Core.GroupId;
+                this.trace(this.getID() + ' send command to client ' + command);
+                Core.Messenger.sendRealtimeMessage(this.getID(), data, RuntimeSide.Dashboard, "message", incrementVisualIndicator, command, groupId);
             }
         }
 

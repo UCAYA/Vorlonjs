@@ -11,6 +11,8 @@ declare module VORLON {
         _socketIOWaitCount: number;
         debug: boolean;
         _RetryTimeout: number;
+        IsBroadcastEnabled: boolean;
+        GroupId: string;
         Messenger: ClientMessenger;
         ClientPlugins: Array<ClientPlugin>;
         DashboardPlugins: Array<DashboardPlugin>;

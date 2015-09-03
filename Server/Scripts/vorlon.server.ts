@@ -129,6 +129,31 @@ export module VORLON {
                 this.json(res, clients);
             });
 
+            app.get("/api/getgroups/:idSession", (req: any, res: any) => {
+                var session = this.sessions[req.params.idSession];
+                var groups = new Array();
+                if (session != null) {
+                    groups = session.clientGroups.map(
+                        (group: ClientGroup) => {
+                            var nbclients = group.connectedClients.filter((client: Client) => {
+                                return client.opened;
+                            }).length;
+
+                            return { "name": group.name, "rule": group.rule, "nbClients": nbclients, "groupId" : group.groupId }
+                        });
+                    
+                    this._log.info("API : GetGroups nb group " + groups.length + " in session " + req.params.idSession, { type: "API", session: req.params.idSession });
+                }
+                else {
+                    this._log.warn("API : No groups in session " + req.params.idSession, { type: "API", session: req.params.idSession });
+                }
+                //Add header no-cache
+                res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+                res.header('Expires', '-1');
+                res.header('Pragma', 'no-cache');
+                this.json(res, groups);
+            });
+
             app.get("/api/range/:idsession/:idplugin/:from/:to",(req: any, res: any) => {
                 this._redisApi.lrange(req.params.idsession + req.params.idplugin, req.params.from, req.params.to,(err: any, reply: any) => {
                     this._log.info("API : Get Range data from : " + req.params.from + " to " + req.params.to + " = " + reply, { type: "API", session: req.params.idsession });
@@ -313,7 +338,23 @@ export module VORLON {
             res.end();
         }
 
-        
+        public evaluateGroupRule(group: ClientGroup, client: Client) {
+
+            if (group.rule === "vorlon:all") {
+                this._log.warn("evaluateGroupRule vorlon:all");
+                group.connectedClients.push(client);
+            }
+            //todo handle 
+        }
+
+        public addClientToSessionGroups(client: Client, session: Session) {
+            this._log.warn("addClientToSessionGroups");
+
+            session.clientGroups.forEach(group => {
+                this.evaluateGroupRule(group, client);
+            });
+        }
+
         public addClient(socket: SocketIO.Socket): void {
             socket.on("helo",(message: string) => {
                 //this._log.warn("CLIENT helo " + message);
@@ -349,6 +390,8 @@ export module VORLON {
                 }
 
                 this._log.info(formatLog("PLUGIN", "Number clients in session : " + (session.nbClients + 1), receiveMessage));
+
+                this.addClientToSessionGroups(client, session);
                 
                 //If dashboard already connected to this socket send "helo" else wait
                 if ((metadata.clientId != "") && (metadata.clientId == session.currentClientId)) {
@@ -361,7 +404,7 @@ export module VORLON {
             });
 
             socket.on("message",(message: string) => {
-                //this._log.warn("CLIENT message " + message);
+                this._log.warn("CLIENT message " + message);
                 var receiveMessage = <VorlonMessage>JSON.parse(message);
                 var dashboard = this.dashboards[receiveMessage.metadata.sessionId];
                 if (dashboard != null) {
@@ -462,7 +505,7 @@ export module VORLON {
                         session.currentClientId = metadata.listenClientId;
 
                         for (var clientId in session.connectedClients) {
-                            var client = session.connectedClients[clientId]
+                            var client = session.connectedClients[clientId];
                             if (client.clientId === metadata.listenClientId) {
                                 if (client.socket != null) {
                                     this._log.info(formatLog("DASHBOARD", "Send helo to socketid :" + client.socket.id, receiveMessage));
@@ -527,17 +570,29 @@ export module VORLON {
                 //this._log.warn("DASHBOARD message " + message);
                 var receiveMessage = <VorlonMessage>JSON.parse(message);
                 var metadata = receiveMessage.metadata;
-                var arrayClients = this.sessions[metadata.sessionId];
+                var session = <Session>this.sessions[metadata.sessionId];
+                
+                if (session != null) {
 
-                if (arrayClients != null) {
-                    for (var clientId in arrayClients.connectedClients) {
-                        var client = arrayClients.connectedClients[clientId];
-                        if (metadata.listenClientId === client.clientId) {
-                            client.socket.emit("message", message);
-                            this._log.info(formatLog("DASHBOARD", "DASHBOARD=>PLUGIN", receiveMessage));
-                            //this._log.info(formatLog("DASHBOARD", "Send to client socketid : " + client.socket.id, receiveMessage));
-                        }
+                    var clients;
+                    if (receiveMessage.metadata.groupId) {
+                        var groups = session.clientGroups.filter((group) => group.groupId === receiveMessage.metadata.groupId);
+                        clients = groups.reduce((result, nextValue) => {
+                            return result.concat(nextValue.connectedClients.filter(client => {
+                                return client.opened;
+                            }));
+                        }, new Array<Client>());
+
+                    } else {
+                        clients = [session.connectedClients[metadata.listenClientId]].filter((client) => client.opened && metadata.listenClientId === client.clientId);
                     }
+
+                    clients.forEach((client) => {
+                        client.socket.emit("message", message);
+                        //this._log.info(formatLog("DASHBOARD", "DASHBOARD=>PLUGIN", receiveMessage));
+                        this._log.info(formatLog("DASHBOARD", "Send to client socketid : " + client.socket.id, receiveMessage));
+                    });
+
                     //this._log.info("DASHBOARD : " + metadata.sessionId + " Send " + (receiveMessage.command ? receiveMessage.command: "") + " to " + arrayClients.nbClients + " client(s)");
                 }
                 else {
@@ -569,6 +624,25 @@ export module VORLON {
         public currentClientId = "";
         public nbClients = -1;
         public connectedClients = new Array<Client>();
+        public clientGroups = new Array<ClientGroup>();
+
+        constructor() {
+            var group = new ClientGroup("all", "vorlon:all");
+            this.clientGroups.push(group);
+        }
+    }
+    
+    export class ClientGroup {
+        public groupId: string;
+        public name: string;
+        public rule: string;
+        public connectedClients = new Array<Client>();
+
+        constructor(name: string, rule: string, groupId: string = null) {
+            this.groupId = groupId || tools.VORLON.Tools.CreateGUID();
+            this.name = name;
+            this.rule = rule;
+        }
     }
 
     export class Client {
@@ -578,6 +652,7 @@ export module VORLON {
         public opened: boolean;
         public waitingevents: number;
         public ua: string;
+        public clientGroups = new Array<ClientGroup>();
 
         constructor(clientId: string, ua: string, socket: SocketIO.Socket, displayId: number, opened: boolean = true) {
             this.clientId = clientId;
@@ -594,6 +669,7 @@ export module VORLON {
         side: number;
         sessionId: string;
         clientId: string;
+        groupId: string;
         listenClientId: string;
         waitingEvents?: number;
     }

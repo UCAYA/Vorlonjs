@@ -8,12 +8,19 @@ module VORLON {
         static ListenClientid: string;
         static ListenClientDisplayid: string;
         static SessionId: string;
+        static GroupId: string;
+        static IsBroadcastEnabled: boolean;
         static ClientList: Array<any>;
-        constructor(sessionid: string, listenClientid: string) {
+        static GroupList: Array<any>;
+
+        constructor(sessionid: string, listenClientid: string, groupId: string) {
+            DashboardManager.GroupId = groupId;
+            DashboardManager.IsBroadcastEnabled = groupId ? true : false;
             DashboardManager.SessionId = sessionid;
             DashboardManager.ListenClientid = listenClientid;
             DashboardManager.ClientList = new Array<any>();
             DashboardManager.RefreshClients();
+            DashboardManager.RefreshGroups();
             this.loadPlugins();
         }
 
@@ -47,21 +54,19 @@ module VORLON {
 
                         var pluginLoaded = 0;
                         var pluginstoload = 0;
-                        
-                        //Cleaning unwanted plugins
-                        for(var i = 0; i < catalog.plugins.length; i++){
-                            if(catalog.plugins[i].enabled){
-                                pluginstoload ++;
-                            }
-                        }
 
-                        for (var i = 0; i < catalog.plugins.length; i++) {
-                            var plugin = catalog.plugins[i];
-                            
-                            if(!plugin.enabled){
-                                continue;
+                        var plugins = catalog.plugins.filter((plugin) => plugin.enabled);
+
+                        if (DashboardManager.IsBroadcastEnabled)
+                            plugins = plugins.filter((plugin) => plugin.isBroadcastEnabled);
+
+                        pluginstoload = plugins.length;
+
+                        plugins.forEach((plugin) => {
+                            if (!plugin.enabled) {
+                                return;
                             }
-                            
+
                             var existingLocation = document.querySelector('[data-plugin=' + plugin.id + ']');
 
                             if (!existingLocation) {
@@ -81,8 +86,7 @@ module VORLON {
                                     }
                                     divPluginsBottom.appendChild(pluginmaindiv);
                                     divPluginBottomTabs.appendChild(plugintab);
-                                }
-                                else {
+                                } else {
                                     if (divPluginsTop.children.length === 1) {
                                         pluginmaindiv.classList.add("active");
                                     }
@@ -107,20 +111,20 @@ module VORLON {
                                 }
                             };
                             document.body.appendChild(pluginscript);
-                        }
-                        
+                        });
+
                         var addPluginBtn = document.createElement('div');
                         addPluginBtn.className = "tab";
                         addPluginBtn.innerText = "+";
                         divPluginTopTabs.appendChild(addPluginBtn);
-                        addPluginBtn.addEventListener('click',() => {
+                        addPluginBtn.addEventListener('click', () => {
                             window.open("http://www.vorlonjs.io/plugins", "_blank");
                         });
-                        
+
                         var collaspseBtn = document.createElement('div');
                         collaspseBtn.className = "fa fa-expand expandBtn";
                         divPluginBottomTabs.appendChild(collaspseBtn);
-                        collaspseBtn.addEventListener('click',() => {
+                        collaspseBtn.addEventListener('click', () => {
                             divPluginsBottom.style.height = 'calc(100% - 58px)';
                             divPluginsTop.style.height = '50px';
                             $('.hsplitter', divPluginsTop.parentElement).css('top', '50px');
@@ -129,7 +133,7 @@ module VORLON {
                         var collaspseTopBtn = document.createElement('div');
                         collaspseTopBtn.className = "fa fa-expand expandBtn";
                         divPluginTopTabs.appendChild(collaspseTopBtn);
-                        collaspseTopBtn.addEventListener('click',() => {
+                        collaspseTopBtn.addEventListener('click', () => {
                             divPluginsBottom.style.height = '50px';
                             divPluginsTop.style.height = 'calc(100% - 58px)';
                             $('.hsplitter', divPluginsTop.parentElement).css('top', 'calc(100% - 58px)');
@@ -177,7 +181,7 @@ module VORLON {
                                 }
                             }
                         }
-                        if (!contains || clients.length === 0) {
+                        if (!DashboardManager.IsBroadcastEnabled && (!contains || clients.length === 0)) {
                             var elt = <HTMLElement>document.querySelector('.dashboard-plugins-overlay');
                             VORLON.Tools.RemoveClass(elt, 'hidden');
                         }
@@ -216,6 +220,52 @@ module VORLON {
             xhr.send();
         }
 
+        public static RefreshGroups(): void {
+            var xhr = new XMLHttpRequest();
+
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+
+                        var divGroupsListPane = <HTMLDivElement> document.getElementById("groupsListPaneContent");
+
+                        while (divGroupsListPane.hasChildNodes()) {
+                            divGroupsListPane.removeChild(divGroupsListPane.lastChild);
+                        }
+
+                        DashboardManager.GroupList = new Array();
+
+                        var groups = JSON.parse(xhr.responseText);
+
+                        var grouplist = document.createElement("ul");
+                        divGroupsListPane.appendChild(grouplist);
+                        
+                        for (var i = 0; i < groups.length; i++) {
+                            var group = groups[i];
+                 
+                            var pluginlistelement = document.createElement("li");
+                            pluginlistelement.classList.add('group');
+
+                            grouplist.appendChild(pluginlistelement);
+
+                            var pluginlistelementa = document.createElement("a");
+                            pluginlistelementa.textContent = " " + group.name + " ( " + group.nbClients + " )";
+
+                            pluginlistelementa.setAttribute("href", "/dashboard/" + DashboardManager.SessionId + "/group/" + group.groupId);
+                            pluginlistelementa.id = "group" + group.name.replace(/\s/g, '_');
+                            pluginlistelement.appendChild(pluginlistelementa);
+
+                            DashboardManager.GroupList.push(group);
+                            //DashboardManager.UpdateClientWaitingInfo(client.clientid, client.waitingevents);
+                        }
+                    }
+                }
+            }
+
+            xhr.open("GET", "/api/getgroups/" + DashboardManager.SessionId);
+            xhr.send();
+        }
+
         public identify(): void {
             Core.Messenger.sendRealtimeMessage("", { "_sessionid": DashboardManager.SessionId }, VORLON.RuntimeSide.Dashboard, "identify");
         }
@@ -239,6 +289,7 @@ module VORLON {
 
         private _onRefreshClients(): void {
             DashboardManager.RefreshClients();
+            DashboardManager.RefreshGroups();
         }
 
         private _onClientUpdateWaitingEvents(message: VorlonMessage): void {

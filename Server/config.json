@@ -16,6 +16,7 @@
         { "id": "NETWORK", "name": "Network Monitor", "panel": "top", "foldername": "networkMonitor", "enabled": true },
         { "id": "RESOURCES", "name": "Resources Explorer", "panel": "top", "foldername": "resourcesExplorer", "enabled": true },
         { "id": "DEVICE", "name": "My Device", "panel": "top", "foldername": "device", "enabled": true },
+        { "id": "BROADCAST", "name": "broadcast", "panel": "top", "foldername": "broadcast", "enabled": true, "isBroadcastEnabled": true },
         { "id": "UNITTEST", "name": "Unit Test", "panel": "top", "foldername": "unitTestRunner", "enabled": true }
     ]
 }

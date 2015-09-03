@@ -92,6 +92,8 @@ gulp.task('scripts', ['typescript-to-js'], function () {
             './**/unitTestRunner/vorlon.unitTestRunner.dashboard.js',
             './**/sample/vorlon.sample.client.js',
             './**/sample/vorlon.sample.dashboard.js',
+            './**/broadcast/vorlon.broadcast.client.js',
+            './**/broadcast/vorlon.broadcast.dashboard.js',
             './**/device/vorlon.device.client.js',
             './**/device/vorlon.device.dashboard.js'
         ])

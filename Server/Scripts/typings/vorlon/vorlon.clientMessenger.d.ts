@@ -32,7 +32,7 @@ declare module VORLON {
         socketId: string;
         constructor(side: RuntimeSide, serverUrl: string, sessionId: string, clientId: string, listenClientId: string);
         sendWaitingEvents(pluginID: string, waitingevents: number): void;
-        sendRealtimeMessage(pluginID: string, objectToSend: any, side: RuntimeSide, messageType?: string, incrementVisualIndicator?: boolean, command?: string): void;
+        sendRealtimeMessage(pluginID: string, objectToSend: any, side: RuntimeSide, messageType?: string, incrementVisualIndicator?: boolean, command?: string, groupId?: string): void;
         sendMonitoringMessage(pluginID: string, message: string): void;
         getMonitoringMessage(pluginID: string, onMonitoringMessage: (messages: string[]) => any, from?: string, to?: string): any;
     }
