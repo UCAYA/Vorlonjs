@@ -77,7 +77,7 @@
             return styleNode;
         }
 
-        private _packageNode(node: any): PackagedNode {
+        private _packageNode(node: any, siblingIndex: number, parentNestedId: string): PackagedNode {
             var packagedNode = {
                 id: node.id,
                 type: node.nodeType,
@@ -92,7 +92,8 @@
                 children: [],
                 isEmpty: false,
                 rootHTML: null,
-                internalId: VORLON.Tools.CreateGUID()
+                //internalId: VORLON.Tools.CreateGUID(),
+                internalId: (parentNestedId && (parentNestedId + "_") || "") + siblingIndex.toString()
             };
             if (node.innerHTML === "") {
                 packagedNode.isEmpty = true;
@@ -112,7 +113,7 @@
                 }
                 node.__vorlon.internalId = packagedNode.internalId;
             }
-
+            
             return packagedNode;
         }
 
@@ -123,7 +124,7 @@
 
             for (var index = 0; index < root.childNodes.length; index++) {
                 var node = <HTMLElement>root.childNodes[index];
-                var packagedNode = this._packageNode(node);
+                var packagedNode = this._packageNode(node, index, (<any>root).__vorlon.internalId);
                 var b = false;
                 if (node.childNodes && node.childNodes.length > 1) {
                     packagedNode.hasChildNodes = true;
@@ -144,9 +145,21 @@
             }
         }
 
+        private getSiblingIndex(element: Node, parent: Node) {
+            var siblingIndex = 0;
+            while (element != null) {
+                element = element.previousSibling;
+                siblingIndex++;
+            }
+            return siblingIndex;
+        }
+
         private _packageAndSendDOM(element: HTMLElement, highlightElementID: string = "") {
             this._internalId = 0;
-            var packagedObject = this._packageNode(element);
+            var parent = element.parentNode;
+            var siblingIndex = this.getSiblingIndex(element, parent);
+
+            var packagedObject = this._packageNode(element, siblingIndex, (<any>parent).__vorlon.internalId );
             this._packageDOM(element, packagedObject, false, highlightElementID);
             if (highlightElementID)
                 packagedObject.highlightElementID = highlightElementID;
@@ -287,7 +300,7 @@
         }
 
         refresh(): void {
-            var packagedObject = this._packageNode(document.documentElement);
+            var packagedObject = this._packageNode(document.documentElement, 0, null);
             this._packageDOM(document.documentElement, packagedObject, this._globalloadactive, null);
             this.sendCommandToDashboard('init', packagedObject);
         }
@@ -329,11 +342,17 @@
                 var elements = document.querySelectorAll(selector);
                 length = elements.length;
                 if (elements.length) {
-                    if (!elements[position])
+                    var element = elements[position];
+                    if (!element)
                         position = 0;
-                    var parentId = this.getFirstParentWithInternalId(elements[position]);
+                    
+                    var parentId = this.getFirstParentWithInternalId(element);
                     if (parentId) {
-                        this.refreshbyId(parentId, this._packageNode(elements[position]).internalId);
+
+                        var parent = element.parentNode;
+                        var siblingIndex = this.getSiblingIndex(element, parent);
+
+                        this.refreshbyId(parentId, this._packageNode(elements[position], siblingIndex, (<any>parent).__vorlon.internalId).internalId);
                     }
                     if (position < elements.length + 1) {
                         position++;

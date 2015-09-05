@@ -112,6 +112,19 @@
                 if (!document.body.__vorlon)
                     document.body.__vorlon = {};
 
+                function refreshNestedIds(parentNode) {
+                    var parentId = (parentNode.__vorlon && (parentNode.__vorlon.internalId + "_")) || "";
+
+                    var idx = 0;
+                    var elt = parentNode.firstChild;
+                    while (elt) {
+                        var v = (<any>elt).__vorlon || ((<any>elt).__vorlon = {});
+                        v.internalId = parentId + (idx++).toString();
+                        refreshNestedIds(elt);
+                        elt = elt.nextSibling;
+                    }
+                }
+
                 var config = { attributes: true, childList: true, subtree: true, characterData: true };
                 document.body.__vorlon._observerMutationObserver = new mutationObserver((mutations) => {
                     var sended = false;
@@ -123,8 +136,13 @@
                         if (mutation.target && !sended && mutation.target.__vorlon && mutation.target.parentNode && mutation.target.parentNode.__vorlon && mutation.target.parentNode.__vorlon.internalId) {
                             setTimeout(() => {
                                 var internalId = null;
-                                if (mutation && mutation.target && mutation.target.parentNode && mutation.target.parentNode.__vorlon && mutation.target.parentNode.__vorlon.internalId)
+                                if (mutation && mutation.target && mutation.target.parentNode && mutation.target.parentNode.__vorlon && mutation.target.parentNode.__vorlon.internalId) {
                                     internalId = mutation.target.parentNode.__vorlon.internalId;
+                                }
+
+                                if (internalId) {
+                                    refreshNestedIds(mutation.target.parentNode);
+                                }
 
                                 Core.Messenger.sendRealtimeMessage('ALL_PLUGINS', {
                                     type: 'contentchanged',

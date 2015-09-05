@@ -1,4 +1,6 @@
-﻿module VORLON {
+﻿/// <reference path="../../vorlon.dashboardPlugin.ts" />
+
+module VORLON {
     declare var $: any;
 
     export class DOMExplorerDashboard extends DashboardPlugin {
@@ -34,6 +36,10 @@
             this._ready = false;
         }
 
+        public sendCommand(command: string, data: any = null, incrementVisualIndicator: boolean = false) {
+            (Core.IsBroadcastEnabled ? this.sendCommandToGroup : this.sendCommandToClient).apply(this, arguments)
+        }
+
         public startDashboardSide(div: HTMLDivElement = null): void {
             this._dashboardDiv = div;
             this._insertHtmlContentAsync(this._dashboardDiv,(filledDiv: HTMLElement) => {
@@ -55,17 +61,17 @@
                 this.refreshButton = this._containerDiv.querySelector('x-action[event="refresh"]');
                 this._stylesEditor = new DomExplorerPropertyEditor(this);
                 this._containerDiv.addEventListener('refresh',() => {
-                    this.sendCommandToClient('refresh');
+                    this.sendCommand('refresh');
                 });
                 this._containerDiv.addEventListener('gethtml',() => {
-                    this.sendCommandToClient('getInnerHTML', {
+                    this.sendCommand('getInnerHTML', {
                         order: this._selectedNode.node.internalId
                     });
                 });
 
                 this._containerDiv.addEventListener('savehtml',() => {
                     this.clikedNodeID = this._selectedNode.node.internalId;
-                    this.sendCommandToClient('saveinnerHTML', {
+                    this.sendCommand('saveinnerHTML', {
                         order: this._selectedNode.node.internalId,
                         innerhtml: this._innerHTMLView.value
                     });
@@ -128,23 +134,23 @@
                     $('#' + elt.target.className, elt.target.parentElement).addClass('visible');
                     elt.target.classList.add('visible');
                     if (elt.target.className.indexOf("htmlsection") !== -1) {
-                        this.sendCommandToClient('getInnerHTML', {
+                        this.sendCommand('getInnerHTML', {
                             order: this._selectedNode.node.internalId
                         });
                     }
                     else if (elt.target.className.indexOf("layoutsection") !== -1) {
-                        this.sendCommandToClient('getStyle', {
+                        this.sendCommand('getStyle', {
                             order: this._selectedNode.node.internalId
                         });
                     }
                     else if (elt.target.className.indexOf("computedsection") !== -1) {
-                        this.sendCommandToClient('getComputedStyleById', {
+                        this.sendCommand('getComputedStyleById', {
                             order: this._selectedNode.node.internalId
                         });
                     }
                 });
                 this._ready = true;
-                this.sendCommandToClient("getMutationObeserverAvailability");
+                this.sendCommand("getMutationObeserverAvailability");
             });
         }
 
@@ -158,11 +164,11 @@
                     this._searchresults.classList.remove('found');
                     this._selectorSearch = this._searchinput.value;
                     if (this._selectorSearch === this._searchinput.value) {
-                        this.sendCommandToClient("searchDOMBySelector", { selector: this._searchinput.value, position: this._positionSearch });
+                        this.sendCommand("searchDOMBySelector", { selector: this._searchinput.value, position: this._positionSearch });
                     }
                     else {
                         this._positionSearch = 0;
-                        this.sendCommandToClient("searchDOMBySelector", { selector: this._searchinput.value });
+                        this.sendCommand("searchDOMBySelector", { selector: this._searchinput.value });
                     }
                 }
             });
@@ -199,7 +205,7 @@
                 this.dirtyCheck();
             } else if (receivedObject.type === "contentchanged" && receivedObject.internalId !== null && this._clientHaveMutationObserver) {
                 if (this._autorefresh)
-                    this.sendCommandToClient('refreshNode', {
+                    this.sendCommand('refreshNode', {
                         order: receivedObject.internalId
                     });
                 else
@@ -304,23 +310,23 @@
         dirtyCheck() {
             this.refreshButton.setAttribute('changed', '');
             if (this._autorefresh) {
-                this.sendCommandToClient('refresh');
+                this.sendCommand('refresh');
             }
         }
 
         hoverNode(internalId: string, unselect: boolean = false) {
             if (!internalId) {
-                this.sendCommandToClient('unselect', {
+                this.sendCommand('unselect', {
                     order: null
                 });
             }
             else if (unselect) {
-                this.sendCommandToClient('unselect', {
+                this.sendCommand('unselect', {
                     order: internalId
                 });
             }
             else {
-                this.sendCommandToClient('select', {
+                this.sendCommand('select', {
                     order: internalId
                 });
             }
@@ -332,11 +338,11 @@
             this._margincontainer.parentElement.parentElement.classList.add('hide');
             if (this._selectedNode) {
                 this._selectedNode.selected(false);
-                this.sendCommandToClient('unselect', {
+                this.sendCommand('unselect', {
                     order: this._selectedNode.node.internalId
                 });
             } else {
-                this.sendCommandToClient('unselect', {
+                this.sendCommand('unselect', {
                     order: null
                 });
             }
@@ -344,7 +350,7 @@
             if (selected) {
                 this._selectedNode = selected;
                 this._selectedNode.selected(true);
-                this.sendCommandToClient('select', {
+                this.sendCommand('select', {
                     order: this._selectedNode.node.internalId
                 });
                 this._stylesEditor.generateStyles(selected.node, selected.node.internalId);
@@ -497,7 +503,7 @@
             }
         }
         sendTextToClient() {
-            this.plugin.sendCommandToClient('setElementValue', {
+            this.plugin.sendCommand('setElementValue', {
                 value: this.element.innerHTML,
                 order: this.parent.node.internalId
             });
@@ -566,7 +572,7 @@
                     if (this.node.hasChildNodes && !nodeButton.element.className.match('loading')) {
                         Tools.AddClass(nodeButton.element, "loading");
                         this.plugin.clikedNodeID = this.node.internalId;
-                        this.plugin.sendCommandToClient('refreshNode', {
+                        this.plugin.sendCommand('refreshNode', {
                             order: this.node.internalId
                         });
                     }
@@ -581,7 +587,7 @@
                         {
                             text: "Edit content as HTML", icon: "", alias: "1-1", action: () => {
                                 that.parent.plugin.select(that);
-                                that.parent.plugin.sendCommandToClient('getInnerHTML', {
+                                that.parent.plugin.sendCommand('getInnerHTML', {
                                     order: that.plugin._selectedNode.node.internalId
                                 });
                                 $("#accordion .htmlsection").trigger('click');
@@ -698,7 +704,7 @@
             });
         }
         public refreshClient() {
-            this._plugin.sendCommandToClient('setSettings', { globalload: this._globalload.checked, autoRefresh: this._autorefresh.checked });
+            this._plugin.sendCommand('setSettings', { globalload: this._globalload.checked, autoRefresh: this._autorefresh.checked });
         }
         private loadSettings() {
             var stringSettings = Tools.getLocalStorageValue("settings" + Core._sessionID);
@@ -708,7 +714,7 @@
                     $(this._globalload).switchButton({ checked: settings.globalload });
                     $(this._autorefresh).switchButton({ checked: settings.autorefresh });
                     if (settings.globalload)
-                        this._plugin.sendCommandToClient('globalload', { value: true });
+                        this._plugin.sendCommand('globalload', { value: true });
                     this._plugin.setAutorefresh(this._autorefresh.checked);
                     return;
                 }
@@ -743,7 +749,7 @@
             var oldNodeName = nodeName.innerHTML;
             var that = this;
             var sendTextToClient = (attributeName, attributeValue, nodeEditable) => {
-                this.parent.plugin.sendCommandToClient('attribute', {
+                this.parent.plugin.sendCommand('attribute', {
                     attributeName: attributeName,
                     attributeOldName: oldNodeName,
                     attributeValue: attributeValue,
@@ -773,7 +779,7 @@
                         {
                             text: "Edit content as HTML", alias: "1-3", icon: "", action: () => {
                                 that.parent.plugin.select(that.parent);
-                                that.parent.plugin.sendCommandToClient('getInnerHTML', {
+                                that.parent.plugin.sendCommand('getInnerHTML', {
                                     order: that.parent.plugin._selectedNode.node.internalId
                                 });
                                 $("#accordion .htmlsection").trigger('click');
@@ -954,7 +960,7 @@
                     for (var index = 0; index < this.parent.styles.length; index++) {
                         this.parent.node.styles.push(this.parent.styles[index].name + ":" + this.parent.styles[index].value);
                     }
-                    this.parent.plugin.sendCommandToClient('style', {
+                    this.parent.plugin.sendCommand('style', {
                         property: label.innerHTML,
                         newValue: valueElement.innerHTML,
                         order: internalId

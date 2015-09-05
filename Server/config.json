@@ -8,7 +8,7 @@
     "password": "",
     "plugins": [
         { "id": "CONSOLE", "name": "Interactive Console", "panel": "bottom", "foldername": "interactiveConsole", "enabled": true },
-        { "id": "DOM", "name": "Dom Explorer", "panel": "top", "foldername": "domExplorer", "enabled": true },
+        { "id": "DOM", "name": "Dom Explorer", "panel": "top", "foldername": "domExplorer", "enabled": true, "isBroadcastEnabled": true },
         { "id": "MODERNIZR", "name": "Modernizr", "panel": "bottom", "foldername": "modernizrReport", "enabled": true },
         { "id": "OBJEXPLORER", "name": "Obj. Explorer", "panel": "top", "foldername": "objectExplorer", "enabled": true },
         { "id": "XHRPANEL", "name": "XHR", "panel": "top", "foldername": "xhrPanel", "enabled": true },
@@ -16,7 +16,6 @@
         { "id": "NETWORK", "name": "Network Monitor", "panel": "top", "foldername": "networkMonitor", "enabled": true },
         { "id": "RESOURCES", "name": "Resources Explorer", "panel": "top", "foldername": "resourcesExplorer", "enabled": true },
         { "id": "DEVICE", "name": "My Device", "panel": "top", "foldername": "device", "enabled": true },
-        { "id": "BROADCAST", "name": "broadcast", "panel": "top", "foldername": "broadcast", "enabled": true, "isBroadcastEnabled": true },
         { "id": "UNITTEST", "name": "Unit Test", "panel": "top", "foldername": "unitTestRunner", "enabled": true }
     ]
 }

@@ -135,9 +135,7 @@ export module VORLON {
                 if (session != null) {
                     groups = session.clientGroups.map(
                         (group: ClientGroup) => {
-                            var nbclients = group.connectedClients.filter((client: Client) => {
-                                return client.opened;
-                            }).length;
+                            var nbclients = group.getConnectedClients(session).length;
 
                             return { "name": group.name, "rule": group.rule, "nbClients": nbclients, "groupId" : group.groupId }
                         });
@@ -342,7 +340,7 @@ export module VORLON {
 
             if (group.rule === "vorlon:all") {
                 this._log.warn("evaluateGroupRule vorlon:all");
-                group.connectedClients.push(client);
+                group.connectedClientIds.push(client.clientId);
             }
             //todo handle 
         }
@@ -394,7 +392,7 @@ export module VORLON {
                 this.addClientToSessionGroups(client, session);
                 
                 //If dashboard already connected to this socket send "helo" else wait
-                if ((metadata.clientId != "") && (metadata.clientId == session.currentClientId)) {
+                if ((metadata.clientId != "") && (metadata.clientId == session.currentClientId || session.currentClientId === "*")) {
                     this._log.info(formatLog("PLUGIN", "Send helo to client to open socket : " + metadata.clientId, receiveMessage));
                     socket.emit("helo", metadata.clientId);
                 }
@@ -417,7 +415,7 @@ export module VORLON {
                     }
                     else {
                         //Send message if _clientID = clientID selected by dashboard
-                        if (session && receiveMessage.metadata.clientId === session.currentClientId) {
+                        if (session && receiveMessage.metadata.clientId === session.currentClientId || session.currentClientId === "*") {
                             dashboard.emit("message", message);
                             this._log.info(formatLog("PLUGIN", "PLUGIN=>DASHBOARD", receiveMessage));
                         }
@@ -453,6 +451,9 @@ export module VORLON {
                         var client = session.connectedClients[clientId];
                         if (client.socket.id === socket.id) {
                             client.opened = false;
+                            session.clientGroups.forEach(function (group) {
+                                group.removeClient(clientId);
+                            });
                             this._log.info(formatLog("PLUGIN", "Delete client socket " + socket.id));
                         }
                     }
@@ -462,13 +463,18 @@ export module VORLON {
             socket.on("clientclosed",(message: string) => {
                 //this._log.warn("CLIENT clientclosed " + message);
                 var receiveMessage = <VorlonMessage>JSON.parse(message);
-                for (var session in this.sessions) {
-                    for (var client in this.sessions[session].connectedClients) {
-                        if (receiveMessage.data.socketid === this.sessions[session].connectedClients[client].socket.id) {
-                            this.sessions[session].connectedClients[client].opened = false;
-                            if (this.dashboards[session]) {
+                for (var sessionId in this.sessions) {
+                    var session = this.sessions[sessionId];
+                    for (var client in session.connectedClients) {
+                        if (receiveMessage.data.socketid === session.connectedClients[client].socket.id) {
+                            session.connectedClients[client].opened = false;
+                            session.clientGroups.forEach(function (group) {
+                                group.removeClient(client);
+                            });
+
+                            if (this.dashboards[sessionId]) {
                                 this._log.info(formatLog("PLUGIN", "Send RefreshClients to Dashboard " + socket.id, receiveMessage));
-                                this.dashboards[session].emit("refreshclients");
+                                this.dashboards[sessionId].emit("refreshclients");
                             } else {
                                 this._log.info(formatLog("PLUGIN", "NOT sending RefreshClients, no Dashboard " + socket.id, receiveMessage));
                             }
@@ -499,17 +505,17 @@ export module VORLON {
                 //if client listen by dashboard send helo to selected client
                 if (metadata.listenClientId !== "") {
                     this._log.info(formatLog("DASHBOARD", "Client selected for :" + metadata.listenClientId, receiveMessage));
-                    var session = this.sessions[metadata.sessionId];
+                    var session = <Session>this.sessions[metadata.sessionId];
                     if (session != undefined) {
                         this._log.info(formatLog("DASHBOARD", "Change currentClient " + metadata.clientId, receiveMessage));
                         session.currentClientId = metadata.listenClientId;
 
                         for (var clientId in session.connectedClients) {
                             var client = session.connectedClients[clientId];
-                            if (client.clientId === metadata.listenClientId) {
+                            if (client.clientId === metadata.listenClientId || metadata.listenClientId === "*") {
                                 if (client.socket != null) {
                                     this._log.info(formatLog("DASHBOARD", "Send helo to socketid :" + client.socket.id, receiveMessage));
-                                    client.socket.emit("helo", metadata.listenClientId);
+                                    client.socket.emit("helo", client.clientId);
                                     
                                 }
                             }
@@ -578,9 +584,7 @@ export module VORLON {
                     if (receiveMessage.metadata.groupId) {
                         var groups = session.clientGroups.filter((group) => group.groupId === receiveMessage.metadata.groupId);
                         clients = groups.reduce((result, nextValue) => {
-                            return result.concat(nextValue.connectedClients.filter(client => {
-                                return client.opened;
-                            }));
+                            return result.concat(nextValue.getConnectedClients(session));
                         }, new Array<Client>());
 
                     } else {
@@ -636,12 +640,29 @@ export module VORLON {
         public groupId: string;
         public name: string;
         public rule: string;
-        public connectedClients = new Array<Client>();
+        public connectedClientIds = new Array<string>();
 
         constructor(name: string, rule: string, groupId: string = null) {
             this.groupId = groupId || tools.VORLON.Tools.CreateGUID();
             this.name = name;
             this.rule = rule;
+        }
+
+        public removeClient(clientId: string) {
+            var idx = this.connectedClientIds.indexOf(clientId);
+            if (idx != -1) {
+                this.connectedClientIds = this.connectedClientIds.splice(idx, 1);
+            }
+        }
+
+        public getConnectedClients(session: Session): Array<Client>{
+            return this.connectedClientIds.reduce((result, clientId) => {
+                var client = session.connectedClients[clientId];
+                if (client && client.opened) {
+                    result.push(client);
+                }
+                return result;
+            }, new Array<Client>());
         }
     }
 
@@ -652,7 +673,6 @@ export module VORLON {
         public opened: boolean;
         public waitingevents: number;
         public ua: string;
-        public clientGroups = new Array<ClientGroup>();
 
         constructor(clientId: string, ua: string, socket: SocketIO.Socket, displayId: number, opened: boolean = true) {
             this.clientId = clientId;

@@ -65,7 +65,7 @@ export module VORLON {
         }
 
         private dashboardWithGroup(req: express.Request, res: express.Response) {
-            res.render('dashboard', { title: 'Dashboard', sessionid: req.params.sessionid, groupId: req.params.groupId });
+            res.render('dashboard', { title: 'Dashboard', sessionid: req.params.sessionid, clientid: "*", groupId: req.params.groupId });
         }
 
         private getsession(req: express.Request, res: express.Response) {
