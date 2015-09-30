@@ -11,6 +11,7 @@ module VORLON {
         private _computedsection: HTMLElement;
         private _dashboardDiv: HTMLDivElement;
         public refreshButton: Element;
+        public inspectButton: Element;
         public clikedNodeID = null;
         public _selectedNode: DomExplorerNode;
         public _rootNode: DomExplorerNode;
@@ -59,8 +60,12 @@ module VORLON {
                 var domSettings = new DomSettings(this);
                 this.searchDOM();
                 this.refreshButton = this._containerDiv.querySelector('x-action[event="refresh"]');
+                this.inspectButton = this._containerDiv.querySelector('x-action[event="inspect"]');
                 this._stylesEditor = new DomExplorerPropertyEditor(this);
-                this._containerDiv.addEventListener('refresh',() => {
+                this._containerDiv.addEventListener('inspectFromClient',() => {
+                    this.sendCommand('inspect');
+                });
+                this._containerDiv.addEventListener('refresh', () => {
                     this.sendCommand('refresh');
                 });
                 this._containerDiv.addEventListener('gethtml',() => {
@@ -659,9 +664,10 @@ module VORLON {
                             menu("#treeNodeClosingText" + this.node.internalId);
                         });
                     });
-                }
+                }   
                 else {
-                    (<HTMLElement>  this.header.querySelector('.closetag')).innerHTML = "/>";
+                   root.element.classList.add('notexpansible');                   
+                   (<HTMLElement>  this.header.querySelector('.closetag')).innerHTML = "/>";
                 }
             }
             // Main node

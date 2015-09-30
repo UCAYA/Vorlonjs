@@ -4,6 +4,7 @@ declare module VORLON {
         side: RuntimeSide;
         sessionId: string;
         clientId: string;
+        groupId: string;
         listenClientId: string;
         waitingEvents?: number;
     }
@@ -26,6 +27,7 @@ declare module VORLON {
         onWaitingEventsReceived: (message: VorlonMessage) => void;
         onStopListenReceived: () => void;
         onRefreshClients: () => void;
+        onReload: (id: string) => void;
         onError: (err: Error) => void;
         isConnected: boolean;
         clientId: string;

@@ -3,6 +3,8 @@
 /// <reference path="vorlon.tools.ts" />
 
 module VORLON {
+    declare var vorlonBaseURL: string;
+
     export class DashboardPlugin extends BasePlugin {
         public htmlFragmentUrl;
         public cssStyleSheetUrl;
@@ -61,7 +63,7 @@ module VORLON {
         }
 
         public _insertHtmlContentAsync(divContainer: HTMLDivElement, callback: (filledDiv: HTMLDivElement) => void): void {
-            var basedUrl = "/" + this.loadingDirectory + "/" + this.name + "/";
+            var basedUrl = vorlonBaseURL + "/" + this.loadingDirectory + "/" + this.name + "/";
             var alone = false;
             if (!divContainer) {
                 // Not emptyDiv provided, let's plug into the main DOM

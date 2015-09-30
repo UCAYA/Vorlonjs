@@ -26,6 +26,7 @@ declare module VORLON {
         private ShowError(message, timeout?);
         private _OnError(err);
         private _OnIdentificationReceived(id);
+        private _OnReloadClient(id);
         private _RetrySendingRealtimeMessage(plugin, message);
         private _Dispatch(message);
         private _DispatchPluginMessage(plugin, message);

@@ -7,6 +7,7 @@
         side : RuntimeSide;
         sessionId : string;
         clientId: string;    
+        groupId: string;    
         listenClientId: string;
         waitingEvents?: number;
     }
@@ -32,7 +33,7 @@
         public onWaitingEventsReceived: (message: VorlonMessage) => void;
         public onStopListenReceived: () => void;
         public onRefreshClients: () => void;
-
+        public onReload: (id: string) => void;
         public onError: (err: Error) => void;
 
         public get isConnected(): boolean {
@@ -117,6 +118,14 @@
                         this.onRefreshClients();
                     }
                 });
+
+                this._socket.on('reload', message => {
+                    //console.log('messenger reloadclient', message);
+                    Core._listenClientId = message;
+                    if (this.onReload) {
+                        this.onReload(message);
+                    }
+                });
             }
         }
 
@@ -127,6 +136,7 @@
                     side: RuntimeSide.Client,
                     sessionId: this._sessionId,
                     clientId: this._clientId,
+                    groupId: null,
                     listenClientId: Core._listenClientId,
                     waitingEvents: waitingevents
                 }

@@ -12,6 +12,7 @@
         constructor() {
             super("domExplorer");
             this._id = "DOM";
+            //this.debug = true;
             this._ready = false;
         }
 
@@ -78,6 +79,9 @@
         }
 
         private _packageNode(node: any, siblingIndex: number, parentNestedId: string): PackagedNode {
+            if (!node)
+                return;
+                
             var packagedNode = {
                 id: node.id,
                 type: node.nodeType,
@@ -95,6 +99,7 @@
                 //internalId: VORLON.Tools.CreateGUID(),
                 internalId: (parentNestedId && (parentNestedId + "_") || "") + siblingIndex.toString()
             };
+            
             if (node.innerHTML === "") {
                 packagedNode.isEmpty = true;
             }
@@ -137,7 +142,10 @@
                     this._packageDOM(node, packagedNode, withChildsNodes, highlightElementID);
                 }
 
-                if ((<any>node).__vorlon.ignore) { return; }
+                if ((<any>node).__vorlon && (<any>node).__vorlon.ignore) { 
+                    return; 
+                }
+                
                 packagedObject.children.push(packagedNode);
                 if (highlightElementID === packagedNode.internalId) {
                     highlightElementID = "";
@@ -175,6 +183,10 @@
         }
 
         private _getElementByInternalId(internalId: string, node: HTMLElement): any {
+            if (!node) {
+                return null;
+            }
+            
             if (node.__vorlon && node.__vorlon.internalId === internalId) {
                 return node;
             }
@@ -300,9 +312,66 @@
         }
 
         refresh(): void {
+            //sometimes refresh is called before document was loaded
+            if (!document.body){
+                setTimeout(() => {
+                   this.refresh(); 
+                }, 200);
+                return;
+            }
             var packagedObject = this._packageNode(document.documentElement, 0, null);
             this._packageDOM(document.documentElement, packagedObject, this._globalloadactive, null);
             this.sendCommandToDashboard('init', packagedObject);
+        }
+        
+        inspect(): void {
+            if (document.elementFromPoint) {
+                this.trace("INSPECT");
+                var overlay = document.createElement("DIV");
+                overlay.style.position = "fixed";
+                overlay.style.left = "0";
+                overlay.style.right = "0";
+                overlay.style.top = "0";
+                overlay.style.bottom = "0";
+                overlay.style.touchAction = "manipulation";
+                overlay.style.backgroundColor = "rgba(255,0,0,0.2)";
+                document.body.appendChild(overlay);
+                var event = "mousedown";
+                if (overlay.onpointerdown !== undefined){
+                    event = "pointerdown";
+                }
+                else if ((<any>overlay).ontouchstart !== undefined){
+                    event = "touchstart";
+                }
+                overlay.addEventListener(event, (arg) => {
+                    var evt = <any>arg;
+                    this.trace("tracking element at " + evt.clientX + "/" +  evt.clientY);
+                    overlay.parentElement.removeChild(overlay);
+                    var el = <HTMLElement>document.elementFromPoint(evt.clientX, evt.clientY);
+                    if (el) {
+                        this.trace("element found");
+                        this.openElementInDashboard(el);
+                    } else {
+                        this.trace("element not found");
+                    }
+                });
+            } else {
+                //TODO : send message back to dashboard and disable button
+                this.trace("VORLON, inspection not supported");
+            }
+        }
+        
+        openElementInDashboard(element : Element){
+            if (element){
+                var parentId = this.getFirstParentWithInternalId(element);
+                if (parentId) {
+
+                    var parent = element.parentNode;
+                    var siblingIndex = this.getSiblingIndex(element, parent);
+
+                    this.refreshbyId(parentId, this._packageNode(element, siblingIndex, (<any>parent).__vorlon.internalId).internalId);
+                }
+            }
         }
 
         setStyle(internaID: string, property: string, newValue: string): void {
@@ -352,7 +421,7 @@
                         var parent = element.parentNode;
                         var siblingIndex = this.getSiblingIndex(element, parent);
 
-                        this.refreshbyId(parentId, this._packageNode(elements[position], siblingIndex, (<any>parent).__vorlon.internalId).internalId);
+                        this.refreshbyId(parentId, this._packageNode(element, siblingIndex, (<any>parent).__vorlon.internalId).internalId);
                     }
                     if (position < elements.length + 1) {
                         position++;
@@ -449,6 +518,11 @@
         refresh() {
             var plugin = <DOMExplorerClient>this;
             plugin.refresh();
+        },
+        
+        inspect() {
+            var plugin = <DOMExplorerClient>this;
+            plugin.inspect();
         },
 
         getInnerHTML(data: any) {
